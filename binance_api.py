@@ -2,14 +2,7 @@ import requests
 
 def get_tickers():
 
-    url = (
-        "https://api.coingecko.com/api/v3/coins/markets"
-        "?vs_currency=usd"
-        "&order=market_cap_desc"
-        "&per_page=20"
-        "&page=1"
-        "&sparkline=false"
-    )
+    url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
 
     response = requests.get(url)
 

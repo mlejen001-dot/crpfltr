@@ -1,3 +1,3 @@
-import requests
+import socket
 
-print("REQUESTS BERHASIL")
+print(socket.getaddrinfo("fapi.binance.com", 443))
