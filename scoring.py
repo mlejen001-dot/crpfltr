@@ -9,6 +9,8 @@ def get_btc_change(data):
             )
 
     return 0
+
+
 def calculate_score(
     coin,
     btc_change
@@ -24,12 +26,9 @@ def calculate_score(
         coin["quoteVolume"]
     )
 
-    # Relative Strength
     rs = change - btc_change
 
     score += rs
-
-    # Bonus volume
 
     if volume > 50_000_000:
         score += 5

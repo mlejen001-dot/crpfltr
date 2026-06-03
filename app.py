@@ -5,17 +5,14 @@ from scoring import (
     get_btc_change
 )
 
-# ambil data Binance
 data = get_tickers()
 
-# cari BTC change
 btc_change = get_btc_change(data)
 
 print(
     f"\nBTC 24h Change: {btc_change}%\n"
 )
 
-# filter coin
 filtered = filter_coins(data)
 
 results = []
@@ -24,8 +21,14 @@ for coin in filtered:
 
     try:
 
+        symbol = coin["symbol"]
+
         change = float(
             coin["priceChangePercent"]
+        )
+
+        volume = float(
+            coin["quoteVolume"]
         )
 
         rs = round(
@@ -39,16 +42,18 @@ for coin in filtered:
         )
 
         results.append({
-            "symbol": coin["symbol"],
+
+            "symbol": symbol,
             "change": change,
+            "volume": volume,
             "rs": rs,
             "score": score
+
         })
 
     except Exception:
         pass
 
-# ranking berdasarkan score
 results = sorted(
     results,
     key=lambda x: x["score"],
@@ -57,11 +62,12 @@ results = sorted(
 
 print("TOP COINS\n")
 
-for coin in results[:20]:
+for coin in results:
 
     print(
-        f"{coin['symbol']} | "
-        f"24h={coin['change']}% | "
-        f"RS={coin['rs']} | "
-        f"Score={coin['score']}"
+        f"{coin['symbol']:<12}"
+        f"Change={coin['change']:>7.2f}% | "
+        f"RS={coin['rs']:>6.2f} | "
+        f"Vol=${coin['volume']/1_000_000:>7.1f}M | "
+        f"Score={coin['score']:>6.2f}"
     )

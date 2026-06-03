@@ -1,3 +1,5 @@
+from whitelist import ALLOWED
+
 def filter_coins(data):
 
     result = []
@@ -8,13 +10,21 @@ def filter_coins(data):
 
             symbol = coin["symbol"]
 
-            # hanya pair USDT
             if not symbol.endswith("USDT"):
                 continue
 
-            volume = float(coin["quoteVolume"])
+            base_symbol = symbol.replace(
+                "USDT",
+                ""
+            )
 
-            # volume minimal 10 juta USD
+            if base_symbol not in ALLOWED:
+                continue
+
+            volume = float(
+                coin["quoteVolume"]
+            )
+
             if volume < 10_000_000:
                 continue
 
