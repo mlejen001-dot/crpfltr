@@ -3,6 +3,9 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from market_state import (
+    get_market_state
+)
 from binance_api import (
     get_tickers,
     get_klines_cached
@@ -40,6 +43,16 @@ btc = next(
 
 btc_change = float(
     btc["priceChangePercent"]
+)
+market = get_market_state()
+
+print()
+print(
+    f"Market State : {market['state']}"
+)
+
+print(
+    f"Multiplier : {market['multiplier']}"
 )
 
 print()
@@ -85,13 +98,19 @@ for coin in filtered:
             btc_change
         )
 
-        score = calculate_score(
+        base_score = calculate_score(
             change,
             rs,
             e20,
             e50,
             rsi_value,
             vol_ratio
+        )
+
+        score = round(
+            base_score *
+            market["multiplier"],
+            2
         )
 
         results.append({

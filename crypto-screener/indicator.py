@@ -26,11 +26,13 @@ def prepare_dataframe(klines):
     df["volume"] = df["volume"].astype(float)
 
     return df
+
+
 def ema20(df):
 
     return (
         df["close"]
-        .ewm(span=20)
+        .ewm(span=20, adjust=False)
         .mean()
         .iloc[-1]
     )
@@ -40,23 +42,19 @@ def ema50(df):
 
     return (
         df["close"]
-        .ewm(span=50)
+        .ewm(span=50, adjust=False)
         .mean()
         .iloc[-1]
     )
+
+
 def rsi(df, period=14):
 
     delta = df["close"].diff()
 
-    gain = delta.where(
-        delta > 0,
-        0
-    )
+    gain = delta.clip(lower=0)
 
-    loss = -delta.where(
-        delta < 0,
-        0
-    )
+    loss = -delta.clip(upper=0)
 
     avg_gain = (
         gain
@@ -72,23 +70,76 @@ def rsi(df, period=14):
 
     rs = avg_gain / avg_loss
 
-    rsi = (
+    rsi_value = (
         100 -
         (100 / (1 + rs))
     )
 
     return round(
-        rsi.iloc[-1],
+        rsi_value.iloc[-1],
         2
     )
+
+
 def volume_spike(df):
 
-    current = df["volume"].iloc[-1]
-
-    average = (
+    current_volume = (
         df["volume"]
-        .tail(20)
+        .iloc[-2]
+    )
+
+    average_volume = (
+        df["volume"]
+        .iloc[-22:-2]
         .mean()
     )
 
-    return current / average
+    return round(
+        current_volume /
+        average_volume,
+        2
+    )
+
+
+def trend_strength(df):
+
+    e20 = ema20(df)
+
+    e50 = ema50(df)
+
+    if e20 > e50:
+        return 1
+
+    return 0
+
+
+def price_above_ema20(df):
+
+    price = (
+        df["close"]
+        .iloc[-2]
+    )
+
+    e20 = ema20(df)
+
+    return price > e20
+
+
+def volume_expansion(df):
+
+    recent = (
+        df["volume"]
+        .iloc[-6:-1]
+        .mean()
+    )
+
+    older = (
+        df["volume"]
+        .iloc[-26:-6]
+        .mean()
+    )
+
+    return round(
+        recent / older,
+        2
+    )
