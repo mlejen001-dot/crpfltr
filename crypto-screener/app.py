@@ -23,7 +23,18 @@ from indicator import (
     rsi,
     volume_spike
 )
-
+from momentum import (
+    price_change_1h,
+    price_change_4h,
+    price_change_24h,
+    acceleration_score,
+    momentum_state
+)
+from oi import (
+    oi_change_1h,
+    oi_change_4h,
+    oi_change_24h
+)
 from scoring import calculate_score
 
 
@@ -104,7 +115,11 @@ for coin in filtered:
             e20,
             e50,
             rsi_value,
-            vol_ratio
+            vol_ratio,
+            oi_change_1h(symbol),
+            oi_change_4h(symbol),
+            oi_change_24h(symbol),
+            accel
         )
 
         score = round(
