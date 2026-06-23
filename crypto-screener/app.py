@@ -12,6 +12,10 @@ from market_state import (
     get_market_state
 )
 
+from btc_regime import (
+    btc_regime
+)
+
 from binance_api import (
     get_tickers,
     get_klines_cached
@@ -69,6 +73,8 @@ from market_classifier import (
 
 data = get_tickers()
 
+btc_state = btc_regime()
+
 universe = build_universe()
 
 filtered = filter_coins(
@@ -96,7 +102,12 @@ print(
     f"Multiplier : {market['multiplier']}"
 )
 
+print(
+    f"BTC Regime : {btc_state}"
+)
+
 print()
+
 print(
     f"BTC 24h Change : {btc_change:.2f}%"
 )
@@ -209,16 +220,16 @@ for coin in filtered:
 
         category = classify_coin(
             rs,
-            rsi_value,
             oi1,
             oi4,
+            oi24,
             accel,
             momentum,
             flow
         )
 
         # ==========================
-        # SCORE
+        # BASE SCORE
         # ==========================
 
         base_score = calculate_score(
@@ -279,12 +290,24 @@ for coin in filtered:
             base_score -= 8
 
         # ==========================
-        # MARKET MULTIPLIER
+        # MARKET REGIME
         # ==========================
 
-        score = round(
+        score = (
             base_score *
-            market["multiplier"],
+            market["multiplier"]
+        )
+
+        if btc_state == "RISK_ON":
+
+            score *= 1.1
+
+        elif btc_state == "RISK_OFF":
+
+            score *= 0.8
+
+        score = round(
+            score,
             2
         )
 
@@ -347,7 +370,7 @@ reversal = [
 ]
 
 # ====================================
-# SORT
+# SORTING
 # ====================================
 
 leaders.sort(
@@ -356,12 +379,21 @@ leaders.sort(
 )
 
 early.sort(
-    key=lambda x: x["oi24"],
+    key=lambda x: (
+        x["oi24"],
+        x["oi4"],
+        x["oi1"],
+        x["accel"]
+    ),
     reverse=True
 )
 
 reversal.sort(
-    key=lambda x: x["accel"],
+    key=lambda x: (
+        x["oi1"],
+        x["accel"],
+        x["rs"]
+    ),
     reverse=True
 )
 
@@ -383,11 +415,13 @@ for item in leaders[:10]:
 
 print("\nEARLY TREND\n")
 
-for item in early[:10]:
+for item in early[:15]:
 
     print(
         f"{item['symbol']:<12}"
         f"| OI24={item['oi24']:>6.2f}%"
+        f" | OI4={item['oi4']:>6.2f}%"
+        f" | OI1={item['oi1']:>6.2f}%"
         f" | ACC={item['accel']:>7.2f}"
         f" | {item['flow']}"
     )
@@ -400,5 +434,6 @@ for item in reversal[:10]:
         f"{item['symbol']:<12}"
         f"| ACC={item['accel']:>7.2f}"
         f" | OI1={item['oi1']:>6.2f}%"
+        f" | RS={item['rs']:>6.2f}"
         f" | {item['flow']}"
     )

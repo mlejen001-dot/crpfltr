@@ -13,14 +13,39 @@ def calculate_score(
 
     score = 0
 
-    # Relative Strength
-    score += rs
+    # =====================
+    # STRENGTH
+    # =====================
 
-    # Trend
+    score += rs * 0.5
+
+    # =====================
+    # OI LEADING SIGNAL
+    # =====================
+
+    score += oi_1h * 2
+
+    score += oi_4h * 3
+
+    score += oi_24h * 0.5
+
+    # =====================
+    # MOMENTUM
+    # =====================
+
+    score += accel * 0.5
+
+    # =====================
+    # TREND
+    # =====================
+
     if ema20 > ema50:
         score += 10
 
+    # =====================
     # RSI
+    # =====================
+
     if 55 <= rsi <= 70:
         score += 10
 
@@ -30,14 +55,20 @@ def calculate_score(
     elif rsi > 80:
         score -= 5
 
-    # Volume
+    # =====================
+    # VOLUME
+    # =====================
+
     if volume_ratio > 2:
         score += 10
 
     elif volume_ratio > 1:
         score += 5
 
-    # Open Interest
+    # =====================
+    # OI BONUS
+    # =====================
+
     if oi_1h > 0:
         score += 2
 
@@ -47,14 +78,24 @@ def calculate_score(
     if oi_24h > 0:
         score += 5
 
+    # =====================
+    # OI NEGATIVE
+    # =====================
+
     if oi_1h < 0:
         score -= 2
 
     if oi_4h < 0:
         score -= 3
 
-    # Price Change
+    # =====================
+    # PRICE
+    # =====================
+
     if change > 0:
         score += 5
 
-    return round(score, 2)
+    return round(
+        score,
+        2
+    )

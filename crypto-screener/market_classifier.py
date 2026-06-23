@@ -1,33 +1,45 @@
 def classify_coin(
     rs,
-    rsi,
     oi1,
     oi4,
+    oi24,
     accel,
     momentum,
     flow
 ):
 
+    # =====================
+    # TREND LEADER
+    # =====================
+
     if (
         rs > 10
+        and oi24 > 10
         and accel > 5
-        and momentum in [
-            "UPTREND",
-            "ACCELERATING"
-        ]
+        and flow == "LONG_BUILD"
     ):
         return "TREND_LEADER"
 
+    # =====================
+    # EARLY TREND
+    # =====================
+
     if (
-        rs > 0
-        and oi1 > 0
+        oi1 > 0
+        and oi4 > 0
         and accel > 0
+        and oi24 > 0
     ):
         return "EARLY_TREND"
 
+    # =====================
+    # REVERSAL
+    # =====================
+
     if (
-        momentum == "REVERSAL"
+        oi1 > 0
         and accel > 0
+        and momentum == "REVERSAL"
     ):
         return "REVERSAL"
 
