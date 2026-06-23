@@ -59,6 +59,9 @@ from scoring import (
     calculate_score
 )
 
+from market_classifier import (
+    classify_coin
+)
 
 # ====================================
 # LOAD DATA
@@ -84,7 +87,6 @@ btc_change = float(
 
 market = get_market_state()
 
-
 print()
 print(
     f"Market State : {market['state']}"
@@ -95,17 +97,13 @@ print(
 )
 
 print()
-
 print(
     f"BTC 24h Change : {btc_change:.2f}%"
 )
 
 print()
-print("TOP COINS")
-print()
 
 results = []
-
 
 # ====================================
 # MAIN LOOP
@@ -140,7 +138,7 @@ for coin in filtered:
         vol_ratio = volume_spike(df)
 
         # ==========================
-        # PRICE / RS
+        # PRICE
         # ==========================
 
         change = float(
@@ -206,7 +204,21 @@ for coin in filtered:
         )
 
         # ==========================
-        # BASE SCORE
+        # CATEGORY
+        # ==========================
+
+        category = classify_coin(
+            rs,
+            rsi_value,
+            oi1,
+            oi4,
+            accel,
+            momentum,
+            flow
+        )
+
+        # ==========================
+        # SCORE
         # ==========================
 
         base_score = calculate_score(
@@ -228,23 +240,23 @@ for coin in filtered:
 
         if momentum == "ACCELERATING":
 
-            base_score += 10
+            base_score += 5
 
         elif momentum == "UPTREND":
 
-            base_score += 5
+            base_score += 3
 
         elif momentum == "REVERSAL":
 
-            base_score += 8
+            base_score += 6
 
         elif momentum == "EXHAUSTION":
 
-            base_score -= 10
+            base_score -= 5
 
         elif momentum == "DOWNTREND":
 
-            base_score -= 20
+            base_score -= 10
 
         # ==========================
         # FLOW BONUS
@@ -252,22 +264,22 @@ for coin in filtered:
 
         if flow == "LONG_BUILD":
 
-            base_score += 10
+            base_score += 5
 
         elif flow == "SHORT_COVER":
 
-            base_score += 5
+            base_score += 3
 
         elif flow == "SHORT_BUILD":
 
-            base_score -= 10
+            base_score -= 5
 
         elif flow == "LONG_LIQUIDATION":
 
-            base_score -= 15
+            base_score -= 8
 
         # ==========================
-        # MARKET REGIME
+        # MARKET MULTIPLIER
         # ==========================
 
         score = round(
@@ -303,6 +315,8 @@ for coin in filtered:
 
             "flow": flow,
 
+            "category": category,
+
             "score": score
 
         })
@@ -313,47 +327,78 @@ for coin in filtered:
             f"Error {symbol}: {e}"
         )
 
+# ====================================
+# GROUPING
+# ====================================
+
+leaders = [
+    x for x in results
+    if x["category"] == "TREND_LEADER"
+]
+
+early = [
+    x for x in results
+    if x["category"] == "EARLY_TREND"
+]
+
+reversal = [
+    x for x in results
+    if x["category"] == "REVERSAL"
+]
 
 # ====================================
 # SORT
 # ====================================
 
-results.sort(
+leaders.sort(
     key=lambda x: x["score"],
     reverse=True
 )
 
+early.sort(
+    key=lambda x: x["oi24"],
+    reverse=True
+)
+
+reversal.sort(
+    key=lambda x: x["accel"],
+    reverse=True
+)
 
 # ====================================
 # OUTPUT
 # ====================================
 
-for item in results[:20]:
+print("\nTREND LEADERS\n")
+
+for item in leaders[:10]:
 
     print(
-
         f"{item['symbol']:<12}"
+        f"| SCORE={item['score']:>7.2f}"
+        f" | RS={item['rs']:>6.2f}"
+        f" | OI24={item['oi24']:>6.2f}%"
+        f" | {item['flow']}"
+    )
 
-        f"|24h={item['change']:>7.2f}% "
+print("\nEARLY TREND\n")
 
-        f"|RS={item['rs']:>7.2f} "
+for item in early[:10]:
 
-        f"|RSI={item['rsi']:>6.2f} "
+    print(
+        f"{item['symbol']:<12}"
+        f"| OI24={item['oi24']:>6.2f}%"
+        f" | ACC={item['accel']:>7.2f}"
+        f" | {item['flow']}"
+    )
 
-        f"|VOL={item['vol']:>5.2f}x "
+print("\nREVERSAL CANDIDATES\n")
 
-        f"|OI1={item['oi1']:>6.2f}% "
+for item in reversal[:10]:
 
-        f"|OI4={item['oi4']:>6.2f}% "
-
-        f"|OI24={item['oi24']:>6.2f}% "
-
-        f"|ACC={item['accel']:>7.2f} "
-
-        f"|{item['momentum']:<12} "
-
-        f"|{item['flow']:<16} "
-
-        f"|SCORE={item['score']:>7.2f}"
-
+    print(
+        f"{item['symbol']:<12}"
+        f"| ACC={item['accel']:>7.2f}"
+        f" | OI1={item['oi1']:>6.2f}%"
+        f" | {item['flow']}"
     )

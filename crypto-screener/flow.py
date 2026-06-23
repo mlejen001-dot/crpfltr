@@ -3,16 +3,16 @@ def flow_state(
     oi1
 ):
 
-    if p1 > 0 and oi1 > 0:
+    if p1 > 1 and oi1 > 1:
         return "LONG_BUILD"
 
-    elif p1 < 0 and oi1 > 0:
+    if p1 < -1 and oi1 > 1:
         return "SHORT_BUILD"
 
-    elif p1 > 0 and oi1 < 0:
+    if p1 > 1 and oi1 < -1:
         return "SHORT_COVER"
 
-    elif p1 < 0 and oi1 < 0:
+    if p1 < -1 and oi1 < -1:
         return "LONG_LIQUIDATION"
 
     return "NEUTRAL"
