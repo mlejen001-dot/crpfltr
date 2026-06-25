@@ -31,5 +31,6 @@ ALLOWED = [
     "FIL",
     "OP",
     "ARB"
+    "GUA"
 
 ]

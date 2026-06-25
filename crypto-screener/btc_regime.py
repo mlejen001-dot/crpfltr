@@ -12,10 +12,12 @@ def btc_regime():
         "BTCUSDT"
     )
 
-    if oi1 > 2 and oi4 > 5:
+    score = oi1 + oi4
+
+    if score > 3:
         return "RISK_ON"
 
-    if oi1 < -2 and oi4 < -5:
+    if score < -3:
         return "RISK_OFF"
 
     return "NEUTRAL"

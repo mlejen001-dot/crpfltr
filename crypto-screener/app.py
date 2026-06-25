@@ -15,7 +15,10 @@ from market_state import (
 from btc_regime import (
     btc_regime
 )
-
+from market_structure import (
+    detect_choch,
+    detect_bos
+)
 from binance_api import (
     get_tickers,
     get_klines_cached
@@ -67,6 +70,10 @@ from market_classifier import (
     classify_coin
 )
 
+from market_structure import (
+    detect_choch,
+    detect_bos
+)
 # ====================================
 # LOAD DATA
 # ====================================
@@ -135,7 +142,9 @@ for coin in filtered:
         df = prepare_dataframe(
             klines
         )
+        choch = detect_choch(df)
 
+        bos = detect_bos(df)
         # ==========================
         # TECHNICAL
         # ==========================
@@ -225,7 +234,9 @@ for coin in filtered:
             oi24,
             accel,
             momentum,
-            flow
+            flow,
+            choch,
+            bos
         )
 
         # ==========================
@@ -332,11 +343,21 @@ for coin in filtered:
 
             "oi24": oi24,
 
+            "p1": p1,
+
+            "p4": p4,
+
+            "p24": p24,
+
             "accel": accel,
 
             "momentum": momentum,
 
             "flow": flow,
+
+            "choch": choch,
+
+            "bos": bos,
 
             "category": category,
 
@@ -407,10 +428,14 @@ for item in leaders[:10]:
 
     print(
         f"{item['symbol']:<12}"
-        f"| SCORE={item['score']:>7.2f}"
+        f"| p24={item['p24']:>6.2f}%"
+        f" | p4={item['p4']:>6.2f}%"
         f" | RS={item['rs']:>6.2f}"
+        f" | OI4={item['oi4']:>6.2f}%"
         f" | OI24={item['oi24']:>6.2f}%"
+        f" | ACC={item['accel']:>7.2f}"
         f" | {item['flow']}"
+        f"| CHOCH={item['choch']}"
     )
 
 print("\nEARLY TREND\n")
@@ -419,10 +444,11 @@ for item in early[:15]:
 
     print(
         f"{item['symbol']:<12}"
-        f"| OI24={item['oi24']:>6.2f}%"
+        f"| p24={item['p24']:>6.2f}%"
         f" | OI4={item['oi4']:>6.2f}%"
         f" | OI1={item['oi1']:>6.2f}%"
         f" | ACC={item['accel']:>7.2f}"
+        f"| CHOCH={item['choch']}"
         f" | {item['flow']}"
     )
 
@@ -432,8 +458,11 @@ for item in reversal[:10]:
 
     print(
         f"{item['symbol']:<12}"
+        f"| p24={item['p24']:>6.2f}%"
         f"| ACC={item['accel']:>7.2f}"
         f" | OI1={item['oi1']:>6.2f}%"
+        f" | OI4={item['oi4']:>6.2f}%"
         f" | RS={item['rs']:>6.2f}"
+        f"| CHOCH={item['choch']}"
         f" | {item['flow']}"
     )

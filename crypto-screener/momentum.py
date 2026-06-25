@@ -75,21 +75,7 @@ def acceleration_score(
         + (p1 * 3)
     )
 
-    return round(
-        score,
-        2
-    )
-
-    score = (
-        (p24 * 1)
-        + (p4 * 2)
-        + (p1 * 3)
-    )
-
-    return round(
-        score,
-        2
-    )
+    return round(score, 2)
 
 
 def momentum_state(
