@@ -23,11 +23,11 @@ def calculate_score(
     # OI LEADING SIGNAL
     # =====================
 
-    score += oi_1h * 2
+    score += oi_1h * 1
 
-    score += oi_4h * 3
+    score += oi_4h * 5
 
-    score += oi_24h * 0.5
+    score += oi_24h * 1
 
     # =====================
     # MOMENTUM

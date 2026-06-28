@@ -70,10 +70,6 @@ from market_classifier import (
     classify_coin
 )
 
-from market_structure import (
-    detect_choch,
-    detect_bos
-)
 # ====================================
 # LOAD DATA
 # ====================================
@@ -97,6 +93,8 @@ btc = next(
 btc_change = float(
     btc["priceChangePercent"]
 )
+
+
 
 market = get_market_state()
 
@@ -142,9 +140,9 @@ for coin in filtered:
         df = prepare_dataframe(
             klines
         )
-        choch = detect_choch(df)
+        choch, choch_price, choch_dir = detect_choch(df)
 
-        bos = detect_bos(df)
+        bos, bos_price, bos_dir = detect_bos(df)
         # ==========================
         # TECHNICAL
         # ==========================
@@ -164,6 +162,23 @@ for coin in filtered:
         change = float(
             coin["priceChangePercent"]
         )
+        price = float(
+            coin["lastPrice"]
+        )
+
+        distance_choch = None
+        if choch_price:
+            distance_choch = round(
+                ((price - choch_price) / choch_price) * 100,
+                2
+            )
+
+        distance_bos = None
+        if bos_price:
+            distance_bos = round(
+                ((price - bos_price) / bos_price) * 100,
+                2
+            )
 
         rs = relative_strength(
             coin,
@@ -222,23 +237,6 @@ for coin in filtered:
             p1,
             oi1
         )
-
-        # ==========================
-        # CATEGORY
-        # ==========================
-
-        category = classify_coin(
-            rs,
-            oi1,
-            oi4,
-            oi24,
-            accel,
-            momentum,
-            flow,
-            choch,
-            bos
-        )
-
         # ==========================
         # BASE SCORE
         # ==========================
@@ -255,7 +253,14 @@ for coin in filtered:
             oi24,
             accel
         )
-
+        
+        # ==========================
+        # SCORE
+        # ==========================
+        if choch:
+            base_score += 5
+        if bos:
+            base_score += 8
         # ==========================
         # MOMENTUM BONUS
         # ==========================
@@ -279,14 +284,17 @@ for coin in filtered:
         elif momentum == "DOWNTREND":
 
             base_score -= 10
-
+        
         # ==========================
         # FLOW BONUS
         # ==========================
 
-        if flow == "LONG_BUILD":
+        if flow=="LONG_BUILD":
 
-            base_score += 5
+            base_score += min(
+                oi4,
+                10
+            )
 
         elif flow == "SHORT_COVER":
 
@@ -321,11 +329,28 @@ for coin in filtered:
             score,
             2
         )
+        # ==========================
+        # CATEGORY
+        # ==========================
 
+        category = classify_coin(
+            rs,
+            oi1,
+            oi4,
+            oi24,
+            accel,
+            momentum,
+            flow,
+            choch,
+            bos,
+            p4
+        )
         results.append({
 
             "symbol": symbol,
 
+            "price": price,
+            
             "change": change,
 
             "rs": rs,
@@ -356,8 +381,18 @@ for coin in filtered:
             "flow": flow,
 
             "choch": choch,
+            "choch_dir": choch_dir,
+            
+            "choch_price": choch_price,
+
+            "distance_choch": distance_choch,
 
             "bos": bos,
+
+            "bos_price": bos_price,
+            "bos_dir": bos_dir,
+
+            "distance_bos": distance_bos,
 
             "category": category,
 
@@ -367,9 +402,11 @@ for coin in filtered:
 
     except Exception as e:
 
-        print(
-            f"Error {symbol}: {e}"
-        )
+        print(symbol,e)
+
+        continue
+    
+
 
 # ====================================
 # GROUPING
@@ -401,23 +438,25 @@ leaders.sort(
 
 early.sort(
     key=lambda x: (
-        x["oi24"],
+        x["choch"],
         x["oi4"],
         x["oi1"],
-        x["accel"]
+        x["accel"],
+        x["p24"],
     ),
     reverse=True
 )
 
 reversal.sort(
     key=lambda x: (
+        x["choch"],
+        x["oi4"],
         x["oi1"],
         x["accel"],
-        x["rs"]
+        x["p24"],
     ),
     reverse=True
 )
-
 # ====================================
 # OUTPUT
 # ====================================
@@ -426,8 +465,57 @@ print("\nTREND LEADERS\n")
 
 for item in leaders[:10]:
 
+    # --------------------------
+    # CHOCH
+    # --------------------------
+    if item["choch"]:
+
+        if item["distance_choch"] is not None:
+
+            choch_str = (
+                f"CHOCH {item['choch_dir']} "
+                f"@{item['choch_price']} "
+                f"({item['distance_choch']:+.2f}%)"
+            )
+
+        else:
+
+            choch_str = (
+                f"CHOCH {item['choch_dir']} "
+                f"@{item['choch_price']}"
+            )
+
+    else:
+
+        choch_str = "CHOCH -"
+
+    # --------------------------
+    # BOS
+    # --------------------------
+    if item["bos"]:
+
+        if item["distance_bos"] is not None:
+
+            bos_str = (
+                f"BOS ↑ "
+                f"@{item['bos_price']} "
+                f"({item['distance_bos']:+.2f}%)"
+            )
+
+        else:
+
+            bos_str = (
+                f"BOS ↑ "
+                f"@{item['bos_price']}"
+            )
+
+    else:
+
+        bos_str = "BOS -"
+
     print(
         f"{item['symbol']:<12}"
+        f"| PRICE={item['price']:>10.6f}"
         f"| p24={item['p24']:>6.2f}%"
         f" | p4={item['p4']:>6.2f}%"
         f" | RS={item['rs']:>6.2f}"
@@ -435,34 +523,137 @@ for item in leaders[:10]:
         f" | OI24={item['oi24']:>6.2f}%"
         f" | ACC={item['accel']:>7.2f}"
         f" | {item['flow']}"
-        f"| CHOCH={item['choch']}"
+        f" | {choch_str}"
+        f" | {bos_str}"
     )
+
 
 print("\nEARLY TREND\n")
 
 for item in early[:15]:
 
+    # --------------------------
+    # CHOCH
+    # --------------------------
+    if item["choch"]:
+
+        if item["distance_choch"] is not None:
+
+            choch_str = (
+                f"CHOCH {item['choch_dir']} "
+                f"@{item['choch_price']} "
+                f"({item['distance_choch']:+.2f}%)"
+            )
+
+        else:
+
+            choch_str = (
+                f"CHOCH {item['choch_dir']} "
+                f"@{item['choch_price']}"
+            )
+
+    else:
+
+        choch_str = "CHOCH -"
+
+    # --------------------------
+    # BOS
+    # --------------------------
+    if item["bos"]:
+
+        if item["distance_bos"] is not None:
+
+            bos_str = (
+                f"BOS ↑ "
+                f"@{item['bos_price']} "
+                f"({item['distance_bos']:+.2f}%)"
+            )
+
+        else:
+
+            bos_str = (
+                f"BOS ↑ "
+                f"@{item['bos_price']}"
+            )
+
+    else:
+
+        bos_str = "BOS -"
+
     print(
         f"{item['symbol']:<12}"
+        f"| PRICE={item['price']:>10.6f}"
         f"| p24={item['p24']:>6.2f}%"
         f" | OI4={item['oi4']:>6.2f}%"
         f" | OI1={item['oi1']:>6.2f}%"
         f" | ACC={item['accel']:>7.2f}"
-        f"| CHOCH={item['choch']}"
+        f" | {choch_str}"
+        f" | {bos_str}"
         f" | {item['flow']}"
     )
+
 
 print("\nREVERSAL CANDIDATES\n")
 
 for item in reversal[:10]:
 
+    # --------------------------
+    # CHOCH
+    # --------------------------
+    if item["choch"]:
+
+        if item["distance_choch"] is not None:
+
+            choch_str = (
+                f"CHOCH {item['choch_dir']} "
+                f"@{item['choch_price']} "
+                f"({item['distance_choch']:+.2f}%)"
+            )
+
+        else:
+
+            choch_str = (
+                f"CHOCH {item['choch_dir']} "
+                f"@{item['choch_price']}"
+            )
+
+    else:
+
+        choch_str = "CHOCH -"
+
+    # --------------------------
+    # BOS
+    # --------------------------
+    if item["bos"]:
+
+        if item["distance_bos"] is not None:
+
+            bos_str = (
+                f"BOS ↑ "
+                f"@{item['bos_price']} "
+                f"({item['distance_bos']:+.2f}%)"
+            )
+
+        else:
+
+            bos_str = (
+                f"BOS ↑ "
+                f"@{item['bos_price']}"
+            )
+
+    else:
+
+        bos_str = "BOS -"
+
     print(
         f"{item['symbol']:<12}"
+        f"| PRICE={item['price']:>10.6f}"
         f"| p24={item['p24']:>6.2f}%"
         f"| ACC={item['accel']:>7.2f}"
         f" | OI1={item['oi1']:>6.2f}%"
         f" | OI4={item['oi4']:>6.2f}%"
         f" | RS={item['rs']:>6.2f}"
-        f"| CHOCH={item['choch']}"
+        f" | {choch_str}"
+        f" | {bos_str}"
         f" | {item['flow']}"
     )

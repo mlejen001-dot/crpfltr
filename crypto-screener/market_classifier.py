@@ -7,33 +7,47 @@ def classify_coin(
     momentum,
     flow,
     choch,
-    bos
+    bos,
+    p4
 ):
 
-    # sudah breakout
+    # ==========================
+    # TREND LEADER
+    # ==========================
 
     if (
         bos
-        and rs > 10
-        and oi24 > 10
+        and (
+            rs > 5
+            or oi24 > 8
+        )
+        and flow == "LONG_BUILD"
     ):
         return "TREND_LEADER"
 
-    # baru reversal
+    # ==========================
+    # REVERSAL
+    # ==========================
 
     if (
         choch
-        and oi1 > 0
-        and oi4 > 0
+        and (
+            oi1 > 0
+            or oi4 > 0
+        )
     ):
         return "REVERSAL"
 
-    # akumulasi sebelum breakout
+    # ==========================
+    # EARLY TREND
+    # ==========================
 
     if (
-        oi4 > 0
-        and oi1 > 0
+        oi1 > 0
+        and oi4 > 0
         and accel > 0
+        and p4 > 0
+        and momentum in ("UPTREND", "ACCELERATING")
     ):
         return "EARLY_TREND"
 
