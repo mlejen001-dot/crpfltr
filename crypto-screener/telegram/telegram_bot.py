@@ -1,4 +1,3 @@
-```python
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -20,7 +19,22 @@ ROOT = os.path.abspath(
 
 sys.path.insert(0, ROOT)
 
-from coin_analyzer import analyze_coin
+from app import run_screening
+
+async def scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    await update.message.reply_text("Scanning...")
+
+    result = run_screening()
+
+    await update.message.reply_text(result)
+    
+
+from coin_analyzer import (
+    analyze_coin,
+    compute_verdict,
+    analysis_to_text,
+)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -29,7 +43,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-```python
 async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     print("Analyze command received")
@@ -50,18 +63,22 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     result = analyze_coin(symbol)
 
-    print(result)
+    verdict = compute_verdict(result)
+
+    text = analysis_to_text(result, verdict)
 
     await update.message.reply_text(
-        str(result["score"])
+        f"<pre>{text}</pre>",
+        parse_mode="HTML"
     )
-```
+
 
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("analyze", analyze))
+app.add_handler(CommandHandler("scan", scan))
 
 print("Bot running...")
 

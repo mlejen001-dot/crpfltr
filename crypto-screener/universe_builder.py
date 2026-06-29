@@ -10,7 +10,7 @@ def build_universe():
 
     now = int(time.time() * 1000)
 
-    MIN_AGE_DAYS = 180
+    MIN_AGE_DAYS = 60
 
     for symbol in info["symbols"]:
 

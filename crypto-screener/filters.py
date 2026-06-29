@@ -1,5 +1,7 @@
 def filter_coins(data, universe):
 
+    MIN_VOLUME = 5_000_000  # Minimum daily quote volume (USDT)
+
     result = []
 
     for coin in data:
@@ -13,12 +15,12 @@ def filter_coins(data, universe):
 
             volume = float(coin["quoteVolume"])
 
-            if volume < 20_000_000:
+            if volume < MIN_VOLUME:
                 continue
 
             result.append(coin)
 
-        except:
-            pass
+        except Exception as e:
+            print(f"{symbol}: {e}")
 
     return result

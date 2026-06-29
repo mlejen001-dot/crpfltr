@@ -1,5 +1,7 @@
-import sys
+import io
 import os
+import sys
+from contextlib import redirect_stdout
 
 sys.path.insert(
     0,
@@ -70,590 +72,405 @@ from market_classifier import (
     classify_coin
 )
 
-# ====================================
-# LOAD DATA
-# ====================================
 
-data = get_tickers()
+def run_screening():
+    buffer = io.StringIO()
 
-btc_state = btc_regime()
+    with redirect_stdout(buffer):
+        # ====================================
+        # LOAD DATA
+        # ====================================
 
-universe = build_universe()
+        data = get_tickers()
 
-filtered = filter_coins(
-    data,
-    universe
-)
+        btc_state = btc_regime()
 
-btc = next(
-    x for x in data
-    if x["symbol"] == "BTCUSDT"
-)
+        universe = build_universe()
 
-btc_change = float(
-    btc["priceChangePercent"]
-)
-
-
-
-market = get_market_state()
-
-print()
-print(
-    f"Market State : {market['state']}"
-)
-
-print(
-    f"Multiplier : {market['multiplier']}"
-)
-
-print(
-    f"BTC Regime : {btc_state}"
-)
-
-print()
-
-print(
-    f"BTC 24h Change : {btc_change:.2f}%"
-)
-
-print()
-
-results = []
-
-# ====================================
-# MAIN LOOP
-# ====================================
-
-for coin in filtered:
-
-    try:
-
-        symbol = coin["symbol"]
-
-        klines = get_klines_cached(
-            symbol,
-            interval="4h",
-            limit=100
+        filtered = filter_coins(
+            data,
+            universe
         )
 
-        df = prepare_dataframe(
-            klines
-        )
-        choch, choch_price, choch_dir = detect_choch(df)
-
-        bos, bos_price, bos_dir = detect_bos(df)
-        # ==========================
-        # TECHNICAL
-        # ==========================
-
-        e20 = ema20(df)
-
-        e50 = ema50(df)
-
-        rsi_value = rsi(df)
-
-        vol_ratio = volume_spike(df)
-
-        # ==========================
-        # PRICE
-        # ==========================
-
-        change = float(
-            coin["priceChangePercent"]
-        )
-        price = float(
-            coin["lastPrice"]
+        btc = next(
+            x for x in data
+            if x["symbol"] == "BTCUSDT"
         )
 
-        distance_choch = None
-        if choch_price:
-            distance_choch = round(
-                ((price - choch_price) / choch_price) * 100,
-                2
-            )
-
-        distance_bos = None
-        if bos_price:
-            distance_bos = round(
-                ((price - bos_price) / bos_price) * 100,
-                2
-            )
-
-        rs = relative_strength(
-            coin,
-            btc_change
+        btc_change = float(
+            btc["priceChangePercent"]
         )
 
-        # ==========================
-        # OPEN INTEREST
-        # ==========================
+        market = get_market_state()
 
-        oi1 = oi_change_1h(
-            symbol
+        print()
+        print(
+            f"Market State : {market['state']}"
         )
 
-        oi4 = oi_change_4h(
-            symbol
+        print(
+            f"Multiplier : {market['multiplier']}"
         )
 
-        oi24 = oi_change_24h(
-            symbol
+        print(
+            f"BTC Regime : {btc_state}"
         )
 
-        # ==========================
-        # MOMENTUM
-        # ==========================
+        print()
 
-        p1 = price_change_1h(
-            symbol
+        print(
+            f"BTC 24h Change : {btc_change:.2f}%"
         )
 
-        p4 = price_change_4h(
-            symbol
-        )
+        print()
 
-        p24 = price_change_24h(
-            symbol
-        )
+        results = []
 
-        accel = acceleration_score(
-            p24,
-            p4,
-            p1
-        )
+        # ====================================
+        # MAIN LOOP
+        # ====================================
 
-        momentum = momentum_state(
-            p24,
-            p4,
-            p1
-        )
+        for coin in filtered:
+            try:
+                symbol = coin["symbol"]
 
-        # ==========================
-        # FLOW
-        # ==========================
+                klines = get_klines_cached(
+                    symbol,
+                    interval="4h",
+                    limit=100
+                )
 
-        flow = flow_state(
-            p1,
-            oi1
-        )
-        # ==========================
-        # BASE SCORE
-        # ==========================
+                df = prepare_dataframe(
+                    klines
+                )
+                choch, choch_price, choch_dir = detect_choch(df)
 
-        base_score = calculate_score(
-            change,
-            rs,
-            e20,
-            e50,
-            rsi_value,
-            vol_ratio,
-            oi1,
-            oi4,
-            oi24,
-            accel
-        )
-        
-        # ==========================
-        # SCORE
-        # ==========================
-        if choch:
-            base_score += 5
-        if bos:
-            base_score += 8
-        # ==========================
-        # MOMENTUM BONUS
-        # ==========================
+                bos, bos_price, bos_dir = detect_bos(df)
 
-        if momentum == "ACCELERATING":
+                e20 = ema20(df)
+                e50 = ema50(df)
+                rsi_value = rsi(df)
+                vol_ratio = volume_spike(df)
 
-            base_score += 5
+                change = float(
+                    coin["priceChangePercent"]
+                )
+                price = float(
+                    coin["lastPrice"]
+                )
 
-        elif momentum == "UPTREND":
+                distance_choch = None
+                if choch_price:
+                    distance_choch = round(
+                        ((price - choch_price) / choch_price) * 100,
+                        2
+                    )
 
-            base_score += 3
+                distance_bos = None
+                if bos_price:
+                    distance_bos = round(
+                        ((price - bos_price) / bos_price) * 100,
+                        2
+                    )
 
-        elif momentum == "REVERSAL":
+                rs = relative_strength(
+                    coin,
+                    btc_change
+                )
 
-            base_score += 6
+                oi1 = oi_change_1h(symbol)
+                oi4 = oi_change_4h(symbol)
+                oi24 = oi_change_24h(symbol)
 
-        elif momentum == "EXHAUSTION":
+                p1 = price_change_1h(symbol)
+                p4 = price_change_4h(symbol)
+                p24 = price_change_24h(symbol)
 
-            base_score -= 5
+                accel = acceleration_score(
+                    p24,
+                    p4,
+                    p1
+                )
 
-        elif momentum == "DOWNTREND":
+                momentum = momentum_state(
+                    p24,
+                    p4,
+                    p1
+                )
 
-            base_score -= 10
-        
-        # ==========================
-        # FLOW BONUS
-        # ==========================
+                flow = flow_state(
+                    p1,
+                    oi1
+                )
 
-        if flow=="LONG_BUILD":
+                base_score = calculate_score(
+                    change,
+                    rs,
+                    e20,
+                    e50,
+                    rsi_value,
+                    vol_ratio,
+                    oi1,
+                    oi4,
+                    oi24,
+                    accel
+                )
 
-            base_score += min(
-                oi4,
-                10
-            )
+                if choch:
+                    base_score += 5
+                if bos:
+                    base_score += 8
 
-        elif flow == "SHORT_COVER":
+                if momentum == "ACCELERATING":
+                    base_score += 5
+                elif momentum == "UPTREND":
+                    base_score += 3
+                elif momentum == "REVERSAL":
+                    base_score += 6
+                elif momentum == "EXHAUSTION":
+                    base_score -= 5
+                elif momentum == "DOWNTREND":
+                    base_score -= 10
 
-            base_score += 3
+                if flow == "LONG_BUILD":
+                    base_score += min(oi4, 10)
+                elif flow == "SHORT_COVER":
+                    base_score += 3
+                elif flow == "SHORT_BUILD":
+                    base_score -= 5
+                elif flow == "LONG_LIQUIDATION":
+                    base_score -= 8
 
-        elif flow == "SHORT_BUILD":
+                score = base_score * market["multiplier"]
 
-            base_score -= 5
+                if btc_state == "RISK_ON":
+                    score *= 1.1
+                elif btc_state == "RISK_OFF":
+                    score *= 0.8
 
-        elif flow == "LONG_LIQUIDATION":
+                score = round(score, 2)
 
-            base_score -= 8
+                category = classify_coin(
+                    rs,
+                    oi1,
+                    oi4,
+                    oi24,
+                    accel,
+                    momentum,
+                    flow,
+                    choch,
+                    bos,
+                    p4
+                )
 
-        # ==========================
-        # MARKET REGIME
-        # ==========================
+                results.append({
+                    "symbol": symbol,
+                    "price": price,
+                    "change": change,
+                    "rs": rs,
+                    "rsi": rsi_value,
+                    "vol": round(vol_ratio, 2),
+                    "oi1": oi1,
+                    "oi4": oi4,
+                    "oi24": oi24,
+                    "p1": p1,
+                    "p4": p4,
+                    "p24": p24,
+                    "accel": accel,
+                    "momentum": momentum,
+                    "flow": flow,
+                    "choch": choch,
+                    "choch_dir": choch_dir,
+                    "choch_price": choch_price,
+                    "distance_choch": distance_choch,
+                    "bos": bos,
+                    "bos_price": bos_price,
+                    "bos_dir": bos_dir,
+                    "distance_bos": distance_bos,
+                    "category": category,
+                    "score": score,
+                })
+            except Exception as e:
+                print(coin.get("symbol", "UNKNOWN"), e)
+                continue
 
-        score = (
-            base_score *
-            market["multiplier"]
-        )
+        leaders = [
+            x for x in results
+            if x["category"] == "TREND_LEADER"
+        ]
 
-        if btc_state == "RISK_ON":
+        early = [
+            x for x in results
+            if x["category"] == "EARLY_TREND"
+        ]
 
-            score *= 1.1
+        reversal = [
+            x for x in results
+            if x["category"] == "REVERSAL"
+        ]
 
-        elif btc_state == "RISK_OFF":
-
-            score *= 0.8
-
-        score = round(
-            score,
-            2
-        )
-        # ==========================
-        # CATEGORY
-        # ==========================
-
-        category = classify_coin(
-            rs,
-            oi1,
-            oi4,
-            oi24,
-            accel,
-            momentum,
-            flow,
-            choch,
-            bos,
-            p4
-        )
-        results.append({
-
-            "symbol": symbol,
-
-            "price": price,
-            
-            "change": change,
-
-            "rs": rs,
-
-            "rsi": rsi_value,
-
-            "vol": round(
-                vol_ratio,
-                2
+        leaders.sort(key=lambda x: x["score"], reverse=True)
+        early.sort(
+            key=lambda x: (
+                x["choch"],
+                x["oi4"],
+                x["oi1"],
+                x["accel"],
+                x["p24"],
             ),
+            reverse=True,
+        )
+        reversal.sort(
+            key=lambda x: (
+                x["choch"],
+                x["oi4"],
+                x["oi1"],
+                x["accel"],
+                x["p24"],
+            ),
+            reverse=True,
+        )
 
-            "oi1": oi1,
+        print("\nTREND LEADERS\n")
 
-            "oi4": oi4,
+        for item in leaders[:10]:
+            if item["choch"]:
+                if item["distance_choch"] is not None:
+                    choch_str = (
+                        f"CHOCH {item['choch_dir']} "
+                        f"@{item['choch_price']} "
+                        f"({item['distance_choch']:+.2f}%)"
+                    )
+                else:
+                    choch_str = (
+                        f"CHOCH {item['choch_dir']} "
+                        f"@{item['choch_price']}"
+                    )
+            else:
+                choch_str = "CHOCH -"
 
-            "oi24": oi24,
+            if item["bos"]:
+                if item["distance_bos"] is not None:
+                    bos_str = (
+                        f"BOS ↑ "
+                        f"@{item['bos_price']} "
+                        f"({item['distance_bos']:+.2f}%)"
+                    )
+                else:
+                    bos_str = (
+                        f"BOS ↑ "
+                        f"@{item['bos_price']}"
+                    )
+            else:
+                bos_str = "BOS -"
 
-            "p1": p1,
-
-            "p4": p4,
-
-            "p24": p24,
-
-            "accel": accel,
-
-            "momentum": momentum,
-
-            "flow": flow,
-
-            "choch": choch,
-            "choch_dir": choch_dir,
-            
-            "choch_price": choch_price,
-
-            "distance_choch": distance_choch,
-
-            "bos": bos,
-
-            "bos_price": bos_price,
-            "bos_dir": bos_dir,
-
-            "distance_bos": distance_bos,
-
-            "category": category,
-
-            "score": score
-
-        })
-
-    except Exception as e:
-
-        print(symbol,e)
-
-        continue
-    
-
-
-# ====================================
-# GROUPING
-# ====================================
-
-leaders = [
-    x for x in results
-    if x["category"] == "TREND_LEADER"
-]
-
-early = [
-    x for x in results
-    if x["category"] == "EARLY_TREND"
-]
-
-reversal = [
-    x for x in results
-    if x["category"] == "REVERSAL"
-]
-
-# ====================================
-# SORTING
-# ====================================
-
-leaders.sort(
-    key=lambda x: x["score"],
-    reverse=True
-)
-
-early.sort(
-    key=lambda x: (
-        x["choch"],
-        x["oi4"],
-        x["oi1"],
-        x["accel"],
-        x["p24"],
-    ),
-    reverse=True
-)
-
-reversal.sort(
-    key=lambda x: (
-        x["choch"],
-        x["oi4"],
-        x["oi1"],
-        x["accel"],
-        x["p24"],
-    ),
-    reverse=True
-)
-# ====================================
-# OUTPUT
-# ====================================
-
-print("\nTREND LEADERS\n")
-
-for item in leaders[:10]:
-
-    # --------------------------
-    # CHOCH
-    # --------------------------
-    if item["choch"]:
-
-        if item["distance_choch"] is not None:
-
-            choch_str = (
-                f"CHOCH {item['choch_dir']} "
-                f"@{item['choch_price']} "
-                f"({item['distance_choch']:+.2f}%)"
+            print(
+                f"{item['symbol']:<12}"
+                f"| PRICE={item['price']:>10.6f}"
+                f"| p24={item['p24']:>6.2f}%"
+                f" | p4={item['p4']:>6.2f}%"
+                f" | RS={item['rs']:>6.2f}"
+                f" | OI4={item['oi4']:>6.2f}%"
+                f" | OI24={item['oi24']:>6.2f}%"
+                f" | ACC={item['accel']:>7.2f}"
+                f" | {item['flow']}"
+                f" | {choch_str}"
+                f" | {bos_str}"
             )
 
-        else:
+        print("\nEARLY TREND\n")
 
-            choch_str = (
-                f"CHOCH {item['choch_dir']} "
-                f"@{item['choch_price']}"
+        for item in early[:15]:
+            if item["choch"]:
+                if item["distance_choch"] is not None:
+                    choch_str = (
+                        f"CHOCH {item['choch_dir']} "
+                        f"@{item['choch_price']} "
+                        f"({item['distance_choch']:+.2f}%)"
+                    )
+                else:
+                    choch_str = (
+                        f"CHOCH {item['choch_dir']} "
+                        f"@{item['choch_price']}"
+                    )
+            else:
+                choch_str = "CHOCH -"
+
+            if item["bos"]:
+                if item["distance_bos"] is not None:
+                    bos_str = (
+                        f"BOS ↑ "
+                        f"@{item['bos_price']} "
+                        f"({item['distance_bos']:+.2f}%)"
+                    )
+                else:
+                    bos_str = (
+                        f"BOS ↑ "
+                        f"@{item['bos_price']}"
+                    )
+            else:
+                bos_str = "BOS -"
+
+            print(
+                f"{item['symbol']:<12}"
+                f"| PRICE={item['price']:>10.6f}"
+                f"| p24={item['p24']:>6.2f}%"
+                f" | OI4={item['oi4']:>6.2f}%"
+                f" | OI1={item['oi1']:>6.2f}%"
+                f" | ACC={item['accel']:>7.2f}"
+                f" | {choch_str}"
+                f" | {bos_str}"
+                f" | {item['flow']}"
             )
 
-    else:
+        print("\nREVERSAL CANDIDATES\n")
 
-        choch_str = "CHOCH -"
+        for item in reversal[:10]:
+            if item["choch"]:
+                if item["distance_choch"] is not None:
+                    choch_str = (
+                        f"CHOCH {item['choch_dir']} "
+                        f"@{item['choch_price']} "
+                        f"({item['distance_choch']:+.2f}%)"
+                    )
+                else:
+                    choch_str = (
+                        f"CHOCH {item['choch_dir']} "
+                        f"@{item['choch_price']}"
+                    )
+            else:
+                choch_str = "CHOCH -"
 
-    # --------------------------
-    # BOS
-    # --------------------------
-    if item["bos"]:
+            if item["bos"]:
+                if item["distance_bos"] is not None:
+                    bos_str = (
+                        f"BOS ↑ "
+                        f"@{item['bos_price']} "
+                        f"({item['distance_bos']:+.2f}%)"
+                    )
+                else:
+                    bos_str = (
+                        f"BOS ↑ "
+                        f"@{item['bos_price']}"
+                    )
+            else:
+                bos_str = "BOS -"
 
-        if item["distance_bos"] is not None:
-
-            bos_str = (
-                f"BOS ↑ "
-                f"@{item['bos_price']} "
-                f"({item['distance_bos']:+.2f}%)"
+            print(
+                f"{item['symbol']:<12}"
+                f"| PRICE={item['price']:>10.6f}"
+                f"| p24={item['p24']:>6.2f}%"
+                f"| ACC={item['accel']:>7.2f}"
+                f" | OI1={item['oi1']:>6.2f}%"
+                f" | OI4={item['oi4']:>6.2f}%"
+                f" | RS={item['rs']:>6.2f}"
+                f" | {choch_str}"
+                f" | {bos_str}"
+                f" | {item['flow']}"
             )
 
-        else:
-
-            bos_str = (
-                f"BOS ↑ "
-                f"@{item['bos_price']}"
-            )
-
-    else:
-
-        bos_str = "BOS -"
-
-    print(
-        f"{item['symbol']:<12}"
-        f"| PRICE={item['price']:>10.6f}"
-        f"| p24={item['p24']:>6.2f}%"
-        f" | p4={item['p4']:>6.2f}%"
-        f" | RS={item['rs']:>6.2f}"
-        f" | OI4={item['oi4']:>6.2f}%"
-        f" | OI24={item['oi24']:>6.2f}%"
-        f" | ACC={item['accel']:>7.2f}"
-        f" | {item['flow']}"
-        f" | {choch_str}"
-        f" | {bos_str}"
-    )
+    return buffer.getvalue()
 
 
-print("\nEARLY TREND\n")
-
-for item in early[:15]:
-
-    # --------------------------
-    # CHOCH
-    # --------------------------
-    if item["choch"]:
-
-        if item["distance_choch"] is not None:
-
-            choch_str = (
-                f"CHOCH {item['choch_dir']} "
-                f"@{item['choch_price']} "
-                f"({item['distance_choch']:+.2f}%)"
-            )
-
-        else:
-
-            choch_str = (
-                f"CHOCH {item['choch_dir']} "
-                f"@{item['choch_price']}"
-            )
-
-    else:
-
-        choch_str = "CHOCH -"
-
-    # --------------------------
-    # BOS
-    # --------------------------
-    if item["bos"]:
-
-        if item["distance_bos"] is not None:
-
-            bos_str = (
-                f"BOS ↑ "
-                f"@{item['bos_price']} "
-                f"({item['distance_bos']:+.2f}%)"
-            )
-
-        else:
-
-            bos_str = (
-                f"BOS ↑ "
-                f"@{item['bos_price']}"
-            )
-
-    else:
-
-        bos_str = "BOS -"
-
-    print(
-        f"{item['symbol']:<12}"
-        f"| PRICE={item['price']:>10.6f}"
-        f"| p24={item['p24']:>6.2f}%"
-        f" | OI4={item['oi4']:>6.2f}%"
-        f" | OI1={item['oi1']:>6.2f}%"
-        f" | ACC={item['accel']:>7.2f}"
-        f" | {choch_str}"
-        f" | {bos_str}"
-        f" | {item['flow']}"
-    )
-
-
-print("\nREVERSAL CANDIDATES\n")
-
-for item in reversal[:10]:
-
-    # --------------------------
-    # CHOCH
-    # --------------------------
-    if item["choch"]:
-
-        if item["distance_choch"] is not None:
-
-            choch_str = (
-                f"CHOCH {item['choch_dir']} "
-                f"@{item['choch_price']} "
-                f"({item['distance_choch']:+.2f}%)"
-            )
-
-        else:
-
-            choch_str = (
-                f"CHOCH {item['choch_dir']} "
-                f"@{item['choch_price']}"
-            )
-
-    else:
-
-        choch_str = "CHOCH -"
-
-    # --------------------------
-    # BOS
-    # --------------------------
-    if item["bos"]:
-
-        if item["distance_bos"] is not None:
-
-            bos_str = (
-                f"BOS ↑ "
-                f"@{item['bos_price']} "
-                f"({item['distance_bos']:+.2f}%)"
-            )
-
-        else:
-
-            bos_str = (
-                f"BOS ↑ "
-                f"@{item['bos_price']}"
-            )
-
-    else:
-
-        bos_str = "BOS -"
-
-    print(
-        f"{item['symbol']:<12}"
-        f"| PRICE={item['price']:>10.6f}"
-        f"| p24={item['p24']:>6.2f}%"
-        f"| ACC={item['accel']:>7.2f}"
-        f" | OI1={item['oi1']:>6.2f}%"
-        f" | OI4={item['oi4']:>6.2f}%"
-        f" | RS={item['rs']:>6.2f}"
-        f" | {choch_str}"
-        f" | {bos_str}"
-        f" | {item['flow']}"
-    )
+if __name__ == "__main__":
+    print(run_screening(), end="")

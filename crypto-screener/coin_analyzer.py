@@ -548,6 +548,17 @@ def print_analysis(result, verdict):
     for reason in result['reasons']:
         print(f"- {reason}")
 
+from io import StringIO
+import contextlib
+
+
+def analysis_to_text(result, verdict):
+    buffer = StringIO()
+
+    with contextlib.redirect_stdout(buffer):
+        print_analysis(result, verdict)
+
+    return buffer.getvalue()
 
 def compute_verdict(result):
     if result.get("bos"):
